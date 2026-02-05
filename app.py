@@ -213,11 +213,11 @@ def load_data(uploaded_file):
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header("1. Upload Data")
+    st.header("Upload Data")
     uploaded_file = st.file_uploader("Select File (CSV/XLSX)", type=['csv', 'xlsx'])
     
     st.markdown("---")
-    st.header("2. Navigation")
+    st.header("Navigation")
     
     if st.button("🏠 Home / Reset"):
         go_home()
@@ -226,7 +226,7 @@ with st.sidebar:
     if uploaded_file:
         df = load_data(uploaded_file)
         if not df.empty:
-            st.markdown("### Quick Jump")
+            st.header("Quick Jump")
             
             all_regions = sorted(df['Region'].dropna().unique())
             st.selectbox(
@@ -488,4 +488,5 @@ elif st.session_state.view_mode == 'Staff':
                     for role in roles:
                         st.markdown(f"- {role}")
                 
+
                 st.markdown("---")
