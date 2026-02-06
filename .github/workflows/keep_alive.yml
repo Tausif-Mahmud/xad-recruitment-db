@@ -1,0 +1,17 @@
+name: Keep Streamlit App Alive
+
+on:
+  # Schedule the workflow to run every hour at minute 0
+  schedule:
+    - cron: '0 * * * *'
+  # Allows you to run this workflow manually from the Actions tab for testing
+  workflow_dispatch:
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          # Replace the URL below with your actual Streamlit App URL
+          curl -I https://xad-recruitment-details.streamlit.app/
