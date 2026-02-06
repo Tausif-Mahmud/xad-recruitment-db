@@ -54,19 +54,26 @@ st.markdown("""
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
     
     /* Hide Github Icons */
-    .css-1jc7ptx, .e1ewe7hr3, .viewerBadge_container__1QSob, 
-    .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137, 
-    .viewerBadge_text__1JaDK{ 
-	    display: none; 
-    } 
-    #MainMenu{ 
-        visibility: hidden; 
-    } 
-    footer { 
-        visibility: hidden; 
-    } 
-    header { 
-        visibility: hidden; 
+    /* Hide the 'Viewer Badge' (Bottom Right Profile Icon) 
+       We use a wildcard selector (*=) because the class name has a random hash that changes. */
+    div[class*="viewerBadge"] {
+        display: none !important;
+    }
+
+    /* Hide the 'Made with Streamlit' Footer */
+    footer {
+        display: none !important;
+    }
+
+    /* Hide the Top Right 'Deploy' / 'Fork' button 
+       This leaves the Settings (Hamburger) menu visible. */
+    .stDeployButton {
+        display: none !important;
+    }
+
+    /* Hide the Colored Decoration Bar at the very top */
+    div[data-testid="stDecoration"] {
+        display: none !important;
     }
     
     </style>
@@ -588,6 +595,7 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
 
 
 
