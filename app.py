@@ -52,6 +52,39 @@ st.markdown("""
     h1 { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
     h3 { font-size: 1.5rem !important; margin-top: 1.5rem !important; margin-bottom: 0.5rem !important; }
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+
+    /* Target standard footers and the specific Streamlit footer ID */
+    footer, footer[data-testid="stFooter"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    /* Attempt to hide any container fixed to the very bottom.
+       This is the most likely way to catch the embed footer, but it depends 
+       on how Streamlit Cloud structures the wrapper. */
+    div[style*="position: fixed"][style*="bottom: 0"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+    
+    /* Hide the 'Viewer Badge' (Bottom Right Profile Icon) */
+    div[class*="viewerBadge"] {
+        display: none !important;
+    }
+
+    /* Hide the Top Right 'Deploy' / 'Fork' button */
+    .stDeployButton {
+        display: none !important;
+    }
+
+    /* Hide the Colored Decoration Bar at the very top */
+    div[data-testid="stDecoration"] {
+        display: none !important;
+    }
     
     </style>
 """, unsafe_allow_html=True)
@@ -572,6 +605,7 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
 
 
 
