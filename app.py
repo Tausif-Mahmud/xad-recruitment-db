@@ -52,11 +52,6 @@ st.markdown("""
     h1 { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
     h3 { font-size: 1.5rem !important; margin-top: 1.5rem !important; margin-bottom: 0.5rem !important; }
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
-    
-    /* Hide GitHub Fork Option and Icon*/
-    .stAppToolbar {
-        display: none;
-    }
 
     </style>
 """, unsafe_allow_html=True)
@@ -580,3 +575,4 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
