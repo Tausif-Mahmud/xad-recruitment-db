@@ -54,8 +54,8 @@ st.markdown("""
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
     
     /* Hide Github Icons */
-    .stAppToolbar {
-        display: none;
+    #GithubIcon {
+        visibility: hidden;
     }
     
     </style>
@@ -577,5 +577,6 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
 
 
