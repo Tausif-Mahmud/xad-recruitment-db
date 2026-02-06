@@ -324,7 +324,7 @@ with st.sidebar:
 # --- Main Window ---
 
 if df is None:
-    st.title("Company Recruitment Dashboard")
+    st.title("XAD Recruitment Details")
     st.error("⚠️ Error loading data from Google Sheets.")
     st.markdown("""
         **Possible causes:**
@@ -337,14 +337,14 @@ if df is None:
     st.stop()
 
 if df.empty:
-    st.title("Company Recruitment Dashboard")
+    st.title("XAD Recruitment Details")
     st.warning("⚠️ The Google Sheet appears to be empty. Please check the data source.")
     st.stop()
 
 
 # --- 1. HOME VIEW ---
 if st.session_state.view_mode == 'Home':
-    st.title("Company Recruitment Dashboard")
+    st.title("XAD Recruitment Details")
     
     # -- Region Section --
     st.subheader("Browse by Region")
