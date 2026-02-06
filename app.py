@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 
 # --- Configuration ---
 st.set_page_config(page_title="Recruitment Dashboard", layout="wide")
@@ -53,6 +52,11 @@ st.markdown("""
     h1 { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
     h3 { font-size: 1.5rem !important; margin-top: 1.5rem !important; margin-bottom: 0.5rem !important; }
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+    
+    /* Hide Github Icons */
+    .stDeployButton {
+        visibility: hidden;
+    }
     
     </style>
 """, unsafe_allow_html=True)
@@ -573,3 +577,4 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
