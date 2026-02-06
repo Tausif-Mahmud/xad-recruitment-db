@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # --- Configuration ---
-st.set_page_config(page_title="Recruitment Dashboard", layout="wide")
+st.set_page_config(page_title="XAD Recruitment Details", layout="wide")
 
 # --- Constants ---
 # Google Sheet Export URL (CSV format)
@@ -11,7 +11,7 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/1HDXLPqdZh3FlK_dmLzi-TzgPMNh
 # --- CSS Styling ---
 st.markdown("""
     <style>
-    /* 1. DYNAMIC BUTTON SIZING (Stack Overflow Approach) */
+    /* 1. Dynamic Button Sizing */
     div[data-testid="stColumn"] div[data-testid="stColumn"] {
         width: fit-content !important;
         flex: unset !important;
@@ -52,45 +52,12 @@ st.markdown("""
     h1 { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
     h3 { font-size: 1.5rem !important; margin-top: 1.5rem !important; margin-bottom: 0.5rem !important; }
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
-
-    /* Target standard footers and the specific Streamlit footer ID */
-    footer, footer[data-testid="stFooter"] {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-
-    /* Attempt to hide any container fixed to the very bottom.
-       This is the most likely way to catch the embed footer, but it depends 
-       on how Streamlit Cloud structures the wrapper. */
-    div[style*="position: fixed"][style*="bottom: 0"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-    }
     
-    /* Hide the 'Viewer Badge' (Bottom Right Profile Icon) */
-    div[class*="viewerBadge"] {
-        display: none !important;
-    }
-
-    /* Hide the Top Right 'Deploy' / 'Fork' button */
-    .stDeployButton {
-        display: none !important;
-    }
-
-    /* Hide the Colored Decoration Bar at the very top */
-    div[data-testid="stDecoration"] {
-        display: none !important;
-    }
-    
-    /* Hide GitHub Icons */
+    /* Hide GitHub Fork Option and Icon*/
     .stAppToolbar {
         display: none;
     }
-    
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -245,12 +212,8 @@ def render_dynamic_buttons(items, key_prefix, selected_val, on_click_action):
             is_active = (selected_val == item)
             btn_type = "primary" if is_active else "secondary"
             
-            # Use a callback lambda to handle click
-            def click_handler(val=item):
-                on_click_action(val)
-
             if cols[c_idx].button(item, key=f"{key_prefix}_{r_idx}_{c_idx}", type=btn_type):
-                click_handler()
+                on_click_action(item)
 
 # --- Navigation Callbacks ---
 def on_region_jump():
@@ -313,6 +276,18 @@ def load_data():
     except Exception as e:
         return None
 
+# --- Pre-Calculation & Data Loading ---
+df = load_data()
+
+# Initialize empty lists to ensure variables exist even if data fails
+all_regions = []
+all_staff = []
+
+if df is not None and not df.empty:
+    # They are now available for both the Sidebar and the Home View below.
+    all_regions = sort_region_list(df['Region'].unique())
+    all_staff = sort_staff_list(df['Staff_Lead'].unique())
+
 # --- Sidebar ---
 with st.sidebar:
     st.header("Main Menu")
@@ -332,7 +307,6 @@ with st.sidebar:
     if df is not None and not df.empty:
         st.header("Quick Jump")
         
-        all_regions = sort_region_list(df['Region'].unique())
         st.selectbox(
             "Go to Region:", 
             options=["Select..."] + list(all_regions),
@@ -340,7 +314,6 @@ with st.sidebar:
             on_change=on_region_jump
         )
         
-        all_staff = sort_staff_list(df['Staff_Lead'].unique())
         st.selectbox(
             "Go to Staff:", 
             options=["Select..."] + list(all_staff),
@@ -377,7 +350,6 @@ if st.session_state.view_mode == 'Home':
     st.subheader("Browse by Region")
     st.caption("See all current projects in a specific region.")
     
-    all_regions = sort_region_list(df['Region'].unique())
     region_map = {get_region_name(r): r for r in all_regions}
     display_names = [get_region_name(r) for r in all_regions]
     
@@ -394,8 +366,6 @@ if st.session_state.view_mode == 'Home':
     # -- Staff Section --
     st.subheader("Browse by Recruitment Staff")
     st.caption("See all sub-divisions managed by a specific staff member.")
-    
-    all_staff = sort_staff_list(df['Staff_Lead'].unique())
     
     def home_staff_click(s_name):
         go_to_staff(s_name)
@@ -610,12 +580,3 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
-
-
-
-
-
-
-
-
-
