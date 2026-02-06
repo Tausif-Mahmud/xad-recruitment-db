@@ -86,6 +86,11 @@ st.markdown("""
         display: none !important;
     }
     
+    /* Hide GitHub Icons */
+    .stAppToolbar {
+        display: none;
+    }
+    
     </style>
 """, unsafe_allow_html=True)
 
@@ -605,6 +610,7 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
+
 
 
 
