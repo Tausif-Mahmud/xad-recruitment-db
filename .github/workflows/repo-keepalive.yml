@@ -1,4 +1,4 @@
-name: Repository Keepalive
+name: Keep Repository Alive
 
 on:
   schedule:
