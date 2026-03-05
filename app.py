@@ -1,14 +1,34 @@
+"""
+XAD Recruitment Details Dashboard
+===================================
+A Streamlit web application that displays open recruitment positions
+sourced from a Google Sheet. Provides three navigable views:
+
+  1. Home — Browse by Region or by Recruitment Staff.
+  2. Region — Drill down from Region → Project → Sub-division → Roles.
+  3. Staff — View all projects/sub-divisions managed by a specific staff member, grouped by region.
+
+Data is pulled live via CSV export from Google Sheets and cached by
+Streamlit. The sidebar provides Home, Refresh, and Quick Jump controls.
+
+Projects are classified as 'simple' (no sub-divisions; Sub_Division == Project)
+or 'complex' (multiple sub-divisions), which determines whether the drill-down
+shows a sub-division selection step or goes directly to open positions.
+
+Requires: GitHub repository to host the script. Deployed via Streamlit Community Cloud service.
+"""
+
 import streamlit as st
 import pandas as pd
 
-# --- Configuration ---
+# ── Configuration ──────────────────────────────────────────────────────────
 st.set_page_config(page_title="XAD Recruitment Details", layout="wide")
 
-# --- Constants ---
-# Google Sheet Export URL (CSV format)
+# Google Sheet CSV export URL
+# To produce this URL: copy the Google Sheet URL and change "edit?" to "export?format=csv&"
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1HDXLPqdZh3FlK_dmLzi-TzgPMNh9CLk_eMJjLK5g-uY/export?format=csv&gid=249760352"
 
-# --- CSS Styling ---
+# ── CSS Styling ────────────────────────────────────────────────────────────
 st.markdown("""
     <style>
     /* 1. Dynamic Button Sizing */
@@ -52,11 +72,16 @@ st.markdown("""
     h1 { font-size: 2.2rem !important; margin-bottom: 1rem !important; }
     h3 { font-size: 1.5rem !important; margin-top: 1.5rem !important; margin-bottom: 0.5rem !important; }
     .caption { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+    
+    /* Hide GitHub Fork Option and Icon*/
+    .stAppToolbar {
+        display: none;
+    }
 
     </style>
 """, unsafe_allow_html=True)
 
-# --- Mappings ---
+# ── Region Acronym Mappings ────────────────────────────────────────────────
 REGION_MAPPING = {
     "UAE": "United Arab Emirates",
     "KSA": "Kingdom of Saudi Arabia",
@@ -65,9 +90,11 @@ REGION_MAPPING = {
 }
 
 def get_region_name(acronym):
+    """Return the full region name for a given acronym, or the acronym itself if unmapped."""
     return REGION_MAPPING.get(acronym, acronym)
 
-# --- Session State ---
+# ── Session State Initialisation ───────────────────────────────────────────
+# Current view and selection state
 if 'view_mode' not in st.session_state:
     st.session_state.view_mode = 'Home'
 if 'selected_region' not in st.session_state:
@@ -75,7 +102,7 @@ if 'selected_region' not in st.session_state:
 if 'selected_staff' not in st.session_state:
     st.session_state.selected_staff = None
 
-# Drill-down states
+# Drill-down states for Region and Staff views
 if 'reg_selected_project' not in st.session_state:
     st.session_state.reg_selected_project = None
 if 'reg_selected_subdiv' not in st.session_state:
@@ -83,20 +110,23 @@ if 'reg_selected_subdiv' not in st.session_state:
 if 'staff_selected_subdiv_key' not in st.session_state:
     st.session_state.staff_selected_subdiv_key = None 
 
-# --- Helper Functions ---
+# ── Navigation Helpers ─────────────────────────────────────────────────────
 
 def reset_drill_down():
+    """Clear all drill-down selections (project, sub-division) across views."""
     st.session_state.reg_selected_project = None
     st.session_state.reg_selected_subdiv = None
     st.session_state.staff_selected_subdiv_key = None
 
 def go_home():
+    """Navigate to the Home view and reset all selections."""
     st.session_state.view_mode = 'Home'
     st.session_state.selected_region = None
     st.session_state.selected_staff = None
     reset_drill_down()
 
 def go_to_region(region_name):
+    """Navigate to the Region view for the given region acronym."""
     if st.session_state.selected_region != region_name:
         reset_drill_down()
     st.session_state.view_mode = 'Region'
@@ -104,18 +134,18 @@ def go_to_region(region_name):
     st.session_state.selected_staff = None
 
 def go_to_staff(staff_name):
+    """Navigate to the Staff view for the given staff member."""
     if st.session_state.selected_staff != staff_name:
         reset_drill_down()
     st.session_state.view_mode = 'Staff'
     st.session_state.selected_staff = staff_name
     st.session_state.selected_region = None
 
+# ── Sorting Helpers ────────────────────────────────────────────────────────
+
 def sort_staff_list(staff_list):
-    """
-    Pins 'Manager Required' to top.
-    Pins 'Unspecified' to bottom.
-    Sorts rest alphabetically.
-    """
+    """Sort staff names alphabetically, pinning 'Manager Required' to top
+    and 'Unspecified' to bottom."""
     unique_staff = sorted(list(set(staff_list)))
     
     special_top = []
@@ -131,7 +161,7 @@ def sort_staff_list(staff_list):
     return special_top + unique_staff + special_bottom
 
 def sort_region_list(region_list):
-    """Pins 'Unspecified Region' to bottom."""
+    """Sort regions alphabetically, pinning 'Unspecified Region' to bottom."""
     unique = sorted(list(set(region_list)))
     if "Unspecified Region" in unique:
         unique.remove("Unspecified Region")
@@ -139,18 +169,20 @@ def sort_region_list(region_list):
     return unique
 
 def sort_general_list(item_list):
-    """Pins 'Unspecified' to bottom for Projects/Sub-divs."""
+    """Sort items alphabetically, pinning 'Unspecified' to bottom."""
     unique = sorted(list(set(item_list)))
     if "Unspecified" in unique:
         unique.remove("Unspecified")
         unique.append("Unspecified")
     return unique
 
+# ── Display Helpers ────────────────────────────────────────────────────────
+
 def format_staff_for_display(staff_list):
-    """
-    Formats staff list for the 'Supervising Staff' line.
-    Removes 'Manager Required'.
-    Returns (formatted_string, boolean_is_manager_required)
+    """Format a staff list into a readable string for the 'Supervising Staff' line.
+
+    Removes 'Manager Required' from the display list (tracked separately).
+    Returns (formatted_string, is_manager_required).
     """
     clean_list = sorted(list(set(staff_list)))
     is_mgr_req = False
@@ -168,16 +200,33 @@ def format_staff_for_display(staff_list):
     return ", ".join(clean_list[:-1]) + " and " + clean_list[-1], is_mgr_req
 
 def is_global_simple_project(full_df, region, project_name):
+    """Return True if a project has no real sub-divisions (Sub_Division == Project name).
+
+    A 'simple' project skips the sub-division selection step in the drill-down
+    and goes directly to listing open positions.
+    """
     subset = full_df[(full_df['Region'] == region) & (full_df['Project'] == project_name)]
     if subset.empty: return False
     unique_subs = subset['Sub_Division'].unique()
     return (len(unique_subs) == 1) and (unique_subs[0] == project_name)
 
-# --- Dynamic Button Layout Engine ---
+# ── Dynamic Button Layout Engine ──────────────────────────────────────────
+
 def render_dynamic_buttons(items, key_prefix, selected_val, on_click_action):
+    """Render a row-wrapped set of buttons that auto-wrap based on text length.
+
+    Buttons are grouped into rows using a character-length heuristic
+    (MAX_CHARS_PER_ROW). The currently selected item is rendered as a
+    'primary' button; all others are 'secondary'.
+
+    Args:
+        items:           List of button labels to render.
+        key_prefix:      Unique prefix for Streamlit widget keys.
+        selected_val:    Currently active item (highlighted as primary), or None.
+        on_click_action: Callback function invoked with the clicked item's label.
+    """
     if not items: return
 
-    # Heuristic: Approximate max characters per row before wrapping
     MAX_CHARS_PER_ROW = 80 
     
     rows = []
@@ -185,8 +234,7 @@ def render_dynamic_buttons(items, key_prefix, selected_val, on_click_action):
     current_len = 0
     
     for item in items:
-        # Estimate length: chars + padding buffer
-        item_len = len(str(item)) + 6 
+        item_len = len(str(item)) + 6  # Character length + padding buffer
         
         if current_len + item_len > MAX_CHARS_PER_ROW and current_row:
             rows.append(current_row)
@@ -199,7 +247,6 @@ def render_dynamic_buttons(items, key_prefix, selected_val, on_click_action):
     if current_row:
         rows.append(current_row)
 
-    # Render Rows
     for r_idx, row_items in enumerate(rows):
         cols = st.columns(len(row_items))
         
@@ -210,27 +257,41 @@ def render_dynamic_buttons(items, key_prefix, selected_val, on_click_action):
             if cols[c_idx].button(item, key=f"{key_prefix}_{r_idx}_{c_idx}", type=btn_type):
                 on_click_action(item)
 
-# --- Navigation Callbacks ---
+# ── Sidebar Navigation Callbacks ──────────────────────────────────────────
+
 def on_region_jump():
+    """Handle the Quick Jump region selectbox change."""
     val = st.session_state.nav_reg_jump
     if val and val != "Select...":
         go_to_region(val)
         st.session_state.nav_reg_jump = "Select..."
 
 def on_staff_jump():
+    """Handle the Quick Jump staff selectbox change."""
     val = st.session_state.nav_staff_jump
     if val and val != "Select...":
         go_to_staff(val)
         st.session_state.nav_staff_jump = "Select..."
 
-# --- Data Loading & Cleaning ---
+# ── Data Loading & Cleaning ───────────────────────────────────────────────
+
 @st.cache_data
 def load_data():
+    """Fetch recruitment data from Google Sheets and clean it for display.
+
+    Cleaning rules:
+      - Empty Region → 'Unspecified Region'
+      - Empty Staff_Lead → 'Unspecified'
+      - Empty Role → 'Unspecified'
+      - If both Project and Sub_Division are empty → both become 'Unspecified'
+      - If only Sub_Division is empty → Sub_Division inherits Project value
+      - If only Project is empty → Project inherits Sub_Division value
+
+    Returns a cleaned DataFrame, or None on fetch failure.
+    """
     try:
-        # Read all as string initially to avoid type errors
         df = pd.read_csv(SHEET_URL, dtype=str)
         
-        # Strip whitespace from headers
         df.columns = [str(c).strip() for c in df.columns]
         
         # 1. Handle Regions
@@ -245,25 +306,20 @@ def load_data():
         df['Role'] = df['Role'].fillna("Unspecified")
         df.loc[df['Role'].str.strip() == '', 'Role'] = "Unspecified"
         
-        # 4. Handle Project & Sub-Division Logic
-        # Fill NaNs with empty string temporary for easier logic
+        # 4. Handle Project & Sub-Division inheritance logic
         df['Project'] = df['Project'].fillna("")
         df['Sub_Division'] = df['Sub_Division'].fillna("")
         
-        # Logic: If both empty -> Unspecified
         mask_both_empty = (df['Project'] == "") & (df['Sub_Division'] == "")
         df.loc[mask_both_empty, 'Project'] = "Unspecified"
         df.loc[mask_both_empty, 'Sub_Division'] = "Unspecified"
         
-        # Logic: If Project has val, Sub is empty -> Sub = Project
         mask_proj_ok_sub_empty = (df['Project'] != "") & (df['Sub_Division'] == "")
         df.loc[mask_proj_ok_sub_empty, 'Sub_Division'] = df.loc[mask_proj_ok_sub_empty, 'Project']
         
-        # Logic: If Sub has val, Proj is empty -> Proj = Sub
         mask_sub_ok_proj_empty = (df['Sub_Division'] != "") & (df['Project'] == "")
         df.loc[mask_sub_ok_proj_empty, 'Project'] = df.loc[mask_sub_ok_proj_empty, 'Sub_Division']
         
-        # Strip strings one last time to be safe
         for col in df.columns:
             df[col] = df[col].astype(str).str.strip()
 
@@ -271,19 +327,17 @@ def load_data():
     except Exception as e:
         return None
 
-# --- Pre-Calculation & Data Loading ---
+# ── Pre-Calculation & Data Loading ─────────────────────────────────────────
 df = load_data()
 
-# Initialize empty lists to ensure variables exist even if data fails
 all_regions = []
 all_staff = []
 
 if df is not None and not df.empty:
-    # They are now available for both the Sidebar and the Home View below.
     all_regions = sort_region_list(df['Region'].unique())
     all_staff = sort_staff_list(df['Staff_Lead'].unique())
 
-# --- Sidebar ---
+# ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Main Menu")
     
@@ -316,7 +370,9 @@ with st.sidebar:
             on_change=on_staff_jump
         )
 
-# --- Main Window ---
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN WINDOW
+# ══════════════════════════════════════════════════════════════════════════════
 
 if df is None:
     st.title("XAD Recruitment Details")
@@ -337,11 +393,11 @@ if df.empty:
     st.stop()
 
 
-# --- 1. HOME VIEW ---
+# ── 1. HOME VIEW ──────────────────────────────────────────────────────────
 if st.session_state.view_mode == 'Home':
     st.title("XAD Recruitment Details")
     
-    # -- Region Section --
+    # Region buttons
     st.subheader("Browse by Region")
     st.caption("See all current projects in a specific region.")
     
@@ -358,7 +414,7 @@ if st.session_state.view_mode == 'Home':
             
     st.markdown("---")
 
-    # -- Staff Section --
+    # Staff buttons
     st.subheader("Browse by Recruitment Staff")
     st.caption("See all sub-divisions managed by a specific staff member.")
     
@@ -370,7 +426,7 @@ if st.session_state.view_mode == 'Home':
         render_dynamic_buttons(all_staff, "home_staff", None, home_staff_click)
 
 
-# --- 2. REGION VIEW ---
+# ── 2. REGION VIEW ────────────────────────────────────────────────────────
 elif st.session_state.view_mode == 'Region':
     region = st.session_state.selected_region
     full_region_name = get_region_name(region)
@@ -380,7 +436,7 @@ elif st.session_state.view_mode == 'Region':
 
     col_content, col_sidebar_list = st.columns([3, 1])
 
-    # --- Right Side: Staff List ---
+    # Right sidebar: Staff list for this region
     with col_sidebar_list:
         st.subheader("Staff in this Region")
         st.caption("Recruitment staff active in this region.")
@@ -391,7 +447,7 @@ elif st.session_state.view_mode == 'Region':
                 go_to_staff(s)
                 st.rerun()
 
-    # --- Left Side: Projects ---
+    # Left content: Project drill-down
     with col_content:
         st.subheader("Projects")
         st.caption("Select a project to view sub-divisions or positions.")
@@ -408,13 +464,14 @@ elif st.session_state.view_mode == 'Region':
 
         render_dynamic_buttons(projects, "reg_proj", st.session_state.reg_selected_project, proj_click)
 
-        # -- Drill Down --
+        # Drill-down: Project → Sub-division → Roles
         if st.session_state.reg_selected_project:
             current_project = st.session_state.reg_selected_project
             proj_df = region_df[region_df['Project'] == current_project]
             is_simple = is_global_simple_project(df, region, current_project)
             
             if is_simple:
+                # Simple project: show roles directly (no sub-division step)
                 st.markdown("---")
                 st.subheader(f"Open Positions in {current_project}")
                 
@@ -429,6 +486,7 @@ elif st.session_state.view_mode == 'Region':
                 for role in roles:
                     st.markdown(f"- {role}")
             else:
+                # Complex project: show sub-division selection first
                 st.markdown("---")
                 st.subheader(f"Sub-divisions for {current_project}")
                 st.caption("Select a sub-division.")
@@ -463,14 +521,13 @@ elif st.session_state.view_mode == 'Region':
                         st.markdown(f"- {role}")
 
 
-# --- 3. STAFF VIEW ---
+# ── 3. STAFF VIEW ─────────────────────────────────────────────────────────
 elif st.session_state.view_mode == 'Staff':
     staff = st.session_state.selected_staff
     
-    # Custom Header for Manager Required
+    # Custom header text for the 'Manager Required' pseudo-staff entry
     if staff == "Manager Required":
         st.title("Vacant Management Positions")
-        # Change the default 'managed by' text in main area
         header_context_project = "Projects in" 
         header_context_sub = "Sub-divisions in"
         caption_text = "Managers are required for the following sub-divisions."
@@ -484,7 +541,7 @@ elif st.session_state.view_mode == 'Staff':
     
     col_content, col_sidebar_list = st.columns([3, 1])
 
-    # --- Right Side: Associated Regions ---
+    # Right sidebar: Associated regions
     with col_sidebar_list:
         st.subheader("Associated Regions")
         st.caption("Regions where this staff member is active.")
@@ -496,7 +553,7 @@ elif st.session_state.view_mode == 'Staff':
                 go_to_region(r)
                 st.rerun()
 
-    # --- Left Side: Managed Items ---
+    # Left content: Projects and sub-divisions grouped by region
     with col_content:
         regions_active = sort_region_list(staff_df['Region'].unique())
         
@@ -506,6 +563,7 @@ elif st.session_state.view_mode == 'Staff':
             
             staff_projects = sort_general_list(region_data['Project'].unique())
             
+            # Classify projects as simple (no sub-divisions) or complex
             simple_projects = []
             complex_projects = {} 
             
@@ -516,7 +574,7 @@ elif st.session_state.view_mode == 'Staff':
                     subs = sort_general_list(region_data[region_data['Project'] == proj]['Sub_Division'].unique())
                     complex_projects[proj] = subs
             
-            # 1. Simple Projects Group
+            # Simple projects: show as a flat button group
             if simple_projects:
                 st.subheader(f"{header_context_project} {full_reg_name}")
                 st.caption(caption_text)
@@ -529,6 +587,7 @@ elif st.session_state.view_mode == 'Staff':
                         st.session_state.staff_selected_subdiv_key = key
                     st.rerun()
                 
+                # Decode the composite key to find the active simple project
                 current_active_simple = None
                 if st.session_state.staff_selected_subdiv_key:
                     parts = st.session_state.staff_selected_subdiv_key.split('|')
@@ -546,7 +605,7 @@ elif st.session_state.view_mode == 'Staff':
                 
                 st.markdown("---")
 
-            # 2. Complex Projects Groups
+            # Complex projects: show sub-division buttons per project
             for proj, subs in complex_projects.items():
                 st.subheader(f"{header_context_sub} {proj} ({full_reg_name})")
                 st.caption(caption_text)
@@ -559,6 +618,7 @@ elif st.session_state.view_mode == 'Staff':
                         st.session_state.staff_selected_subdiv_key = key
                     st.rerun()
                 
+                # Decode the composite key to find the active sub-division
                 current_active_sub = None
                 if st.session_state.staff_selected_subdiv_key:
                     parts = st.session_state.staff_selected_subdiv_key.split('|')
@@ -575,4 +635,3 @@ elif st.session_state.view_mode == 'Staff':
                         st.markdown(f"- {role}")
                 
                 st.markdown("---")
-
